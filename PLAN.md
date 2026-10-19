@@ -42,3 +42,7 @@ El contrato de `POST /auth/login` documentado en `docs/ENDPOINTS.md` se conserva
 - `src/test/java/com/bcp/workshop/auth/AuthCorsTest.java` (nuevo, si no se puede integrar en la prueba de recurso): comprobar que un origen configurado recibe permiso y que uno no configurado no queda autorizado.
 
 **Pruebas de caracterización antes de tocar producción:** Añadir primero una prueba de integración de login exitoso que fije el contrato HTTP vigente y confirme que `token` continúa siendo string. Añadir pruebas de configuración que definan el origen de prueba permitido y documenten el comportamiento actual de CORS; tras el cambio, exigir permiso solo para el origen configurado. Añadir una prueba para que el secreto de prueba sea suministrado por configuración, no por una constante Java. Luego verificar que cambiar el secreto de prueba cambia la firma, que su valor no se encuentra en el token y que la ausencia de configuración requerida falla de forma explícita, sin filtrar el valor en errores.
+
+## Aprobación
+
+Plan aprobado explícitamente por el usuario en la conversación el 2026-10-19. Se autoriza implementar H-02 y H-04 según el alcance descrito arriba.
