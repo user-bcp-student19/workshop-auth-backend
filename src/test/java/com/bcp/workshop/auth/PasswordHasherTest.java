@@ -30,7 +30,11 @@ class PasswordHasherTest {
     @Test
     void rejectsMalformedHashesAndNullPasswords() {
         assertFalse(passwordHasher.verify("password", "not-a-password-hash"));
+        assertFalse(passwordHasher.verify("password", null));
+        assertFalse(passwordHasher.verify("password", "pbkdf2-sha256$not-a-number$bad$bad"));
         assertFalse(passwordHasher.verify("password", "pbkdf2-sha256$999999999$bad$bad"));
+        assertFalse(passwordHasher.verify("password", "pbkdf2-sha256$600000$AQ==$bad"));
+        assertFalse(passwordHasher.verify("password", "pbkdf2-sha256$600000$MDEyMzQ1Njc4OWFiY2RlZg==$AQ=="));
         assertFalse(passwordHasher.verify(null, "pbkdf2-sha256$600000$bad$bad"));
         assertThrows(IllegalArgumentException.class, () -> passwordHasher.hash(null));
     }

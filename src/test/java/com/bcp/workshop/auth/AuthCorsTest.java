@@ -28,6 +28,19 @@ class AuthCorsTest {
                 .when().options("/auth/login")
                 .then()
                 .statusCode(403)
-                .header("Access-Control-Allow-Origin", nullValue());
+                .header("Access-Control-Allow-Origin", nullValue())
+                .body(is(""));
+    }
+
+    @Test
+    void rejectsUnconfiguredOriginForHealthPreflight() {
+        given()
+                .header("Origin", "https://untrusted.example")
+                .header("Access-Control-Request-Method", "GET")
+                .when().options("/q/health")
+                .then()
+                .statusCode(403)
+                .header("Access-Control-Allow-Origin", nullValue())
+                .body(is(""));
     }
 }
