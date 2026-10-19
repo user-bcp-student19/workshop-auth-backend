@@ -17,6 +17,7 @@ convierten fallos internos de SQLite en una respuesta deseada.
 | `POST /auth/login` | `rejectsMalformedJsonWithEmptyBody` | Error 400 | Cuerpo vacío. |
 | `POST /auth/login` | `rejectsInvalidCredentialsWithUnauthorizedStatus` | Error 401 | HTTP 401 y mensaje de credenciales inválidas para contraseña incorrecta. |
 | `POST /auth/login` | `rejectsUnknownUserWithUnauthorizedStatus` | Error 401 | HTTP 401 y mensaje con el username inexistente. |
+| `POST /auth/login` | `allowsConfiguredOriginForLoginPreflight` | Borde / CORS | El preflight del origen configurado recibe HTTP 200 y `Access-Control-Allow-Origin`. |
 | `POST /auth/login` | `rejectsUnconfiguredOriginForLoginPreflight` | Error 403 | Preflight de origen no permitido; cuerpo vacío. |
 | `POST /auth/login` | `rejectsUnsupportedHttpMethodWithEmptyBody` | Error 405 | `GET /auth/login`; cuerpo vacío. |
 | `POST /auth/login` | `rejectsUnacceptableResponseTypeWithEmptyBody` | Error 406 | `Accept: text/plain`; cuerpo vacío. |
@@ -25,14 +26,13 @@ convierten fallos internos de SQLite en una respuesta deseada.
 | `POST /auth/login` | `migratesExistingPasswordsOnceAndVerifiesCredentials` | Borde / persistencia | Migra una contraseña heredada, conserva el login válido, rechaza la incorrecta y no repite la migración al reinicializar. |
 | `POST /auth/login` | `createsDifferentSaltedHashesForSamePassword` | Borde / seguridad | Dos hashes para la misma contraseña usan salts distintos. |
 | `POST /auth/login` | `verifiesOnlyTheMatchingPassword` | Borde / seguridad | Verifica la contraseña correcta y rechaza otra. |
-| `POST /auth/login` | `rejectsMalformedHashesAndNullPasswords` | Error / seguridad | Rechaza formatos, longitudes, iteraciones y valores nulos inválidos sin excepción al consumidor. |
+| `POST /auth/login` | `rejectsMalformedHashesAndNullPasswords` | Error / seguridad | `verify` devuelve false para hashes malformados, parámetros fuera de rango y entradas nulas; `hash(null)` lanza `IllegalArgumentException`. |
 | `POST /auth/login` | `createsSignedTokenWithExplicitClaimsAndNoEmbeddedSecret` | Camino feliz / seguridad | El token tiene tres segmentos, firma HS256 verificable, claims sub/role/iat/exp y no contiene la clave. |
 | `POST /auth/login` | `signingKeyChangesTokenSignature` | Borde / seguridad | Cambiar la clave modifica la firma. |
 | `POST /auth/login` | `rejectsMissingOrWeakSigningKeys` | Error / seguridad | Una clave menor a 32 bytes es rechazada. |
 | `GET /q/health` | `reportsUpWithoutAuthentication` | Camino feliz | HTTP 200, JSON y `status: UP` sin header Authorization. |
 | `GET /q/health` | `reportsEmptyChecksWhenNoHealthChecksAreRegistered` | Borde | HTTP 200 y `checks: []` cuando no hay checks registrados. |
 | `GET /q/health` | `rejectsUnconfiguredOriginForHealthPreflight` | Error 403 | Preflight de origen no permitido; cuerpo vacío. |
-| `GET /q/health` | `allowsConfiguredOriginForLoginPreflight` | Borde / CORS compartido | El preflight del origen configurado recibe HTTP 200 y `Access-Control-Allow-Origin`. |
 
 ## Código ejecutable de las pruebas
 
@@ -53,6 +53,7 @@ Directorio de trabajo: raíz del repositorio `workshop-auth-backend/`.
 
 | comando | código de salida | resultado |
 |---|---:|---|
+| `mvn '-Dtest=AuthResourceTest,AuthCorsTest,HealthEndpointTest,AuthResourceWeakSecretTest' test` (primer intento) | 1 | Compilación detenida por un literal JSON mal escapado en `AuthResourceTest`; no se ejecutaron pruebas. |
 | `mvn '-Dtest=AuthResourceTest,AuthCorsTest,HealthEndpointTest,AuthResourceWeakSecretTest,LegacyTokenUtilTest,LegacyDatabaseTest,PasswordHasherTest' test` | 0 | 27 pruebas; 0 fallos, 0 errores, 0 omitidas. |
 | `mvn verify` | 0 | 27 pruebas; `BUILD SUCCESS`; reporte JaCoCo generado. |
 
