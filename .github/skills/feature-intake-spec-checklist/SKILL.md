@@ -75,4 +75,4 @@ Adjunta o referencia estos elementos en el PR o entrega:
 - `examples/input.sample.md`.
 - `examples/output.sample.md`.
 - Tag de versión para el Skill, como `skill-feature-intake-v0.1.0`.
-- Generar esta evidencia en un archivo `evidence.md`, solo de los puntos del output que se mencionen.
+- Generar esta evidencia en un archivo `evidence-HU-01.md`, solo de los puntos del output que se mencionen.
