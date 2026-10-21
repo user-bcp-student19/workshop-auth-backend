@@ -40,6 +40,10 @@
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-jwt-build</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.50.3.0</version>
@@ -73,6 +77,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
+                    <environmentVariables>
+                        <AUTH_DB_URL>jdbc:sqlite:./target/test-workshop.db</AUTH_DB_URL>
+                    </environmentVariables>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                     </systemPropertyVariables>

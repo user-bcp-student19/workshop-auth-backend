@@ -9,9 +9,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class LegacyDatabase {
+    private static final Logger LOGGER = Logger.getLogger(LegacyDatabase.class.getName());
     private static final String DB_URL = System.getenv().getOrDefault("AUTH_DB_URL", "jdbc:sqlite:./data/workshop.db");
 
     @PostConstruct
@@ -24,7 +26,7 @@ public class LegacyDatabase {
                 statement.executeUpdate("INSERT OR IGNORE INTO legacy_users(username,password,display_name,role) VALUES ('trainer','Trainer123!','Workshop Trainer','TRAINER')");
             }
         } catch (Exception error) {
-            error.printStackTrace();
+            LOGGER.warning("Authentication database initialization failed");
         }
     }
 
@@ -37,7 +39,7 @@ public class LegacyDatabase {
                 return new UserRecord(result.getLong("id"), result.getString("username"), result.getString("display_name"), result.getString("role"));
             }
         } catch (Exception error) {
-            error.printStackTrace();
+            LOGGER.warning("Authentication credential lookup failed");
         }
         return null;
     }

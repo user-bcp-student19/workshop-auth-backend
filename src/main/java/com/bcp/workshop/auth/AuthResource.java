@@ -11,13 +11,14 @@ import org.apache.commons.text.StringEscapeUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/auth")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
     @Inject
-    LegacyDatabase database;
+    AuthenticationService authenticationService;
 
     @POST
     @Path("/login")
@@ -32,18 +33,22 @@ public class AuthResource {
                     if (request.password == null || request.password.trim().isEmpty()) {
                         return Response.status(400).entity(Map.of("message", "Password is required")).build();
                     } else {
-                        UserRecord user = database.findByCredentials(request.username, request.password);
-                        if (user == null) {
+                        if (request.client == null || request.client.trim().isEmpty()) {
+                            return Response.status(400).entity(Map.of("message", "Client is required")).build();
+                        }
+                        Optional<AuthenticationService.LoginResult> result = authenticationService.authenticate(
+                            request.username, request.password, request.client);
+                        if (result.isEmpty()) {
                             return Response.status(401).entity(Map.of("message", "Invalid user " + request.username + " or password")).build();
                         } else {
-                            String token = LegacyTokenUtil.create(user.username(), user.role());
+                            AuthenticationService.LoginResult login = result.get();
                             Map<String, Object> response = new HashMap<>();
-                            response.put("token", token);
-                            response.put("expiresIn", 3600);
+                            response.put("token", login.token());
+                            response.put("expiresIn", login.expiresIn());
                             response.put("user", Map.of(
-                                    "username", user.username(),
-                                    "displayName", StringEscapeUtils.escapeHtml4(user.displayName()),
-                                    "role", user.role()
+                                "username", login.username(),
+                                "displayName", StringEscapeUtils.escapeHtml4(login.displayName()),
+                                "role", login.role()
                             ));
                             response.put("debug", "authenticated-with-legacy-flow");
                             return Response.ok(response).build();
