@@ -8,7 +8,7 @@ Proteger el comportamiento HTTP documentado el Dia 1 en `docs/ENDPOINTS.md` mien
 
 ### Requirement: Entrada de login compatible
 
-El servicio SHALL conservar `POST /auth/login` sin autenticacion previa y con solicitud y respuesta JSON. `username` y `password` SHALL rechazarse si faltan, son nulos o quedan vacios tras `trim()`, pero sus valores originales SHALL usarse para buscar al usuario y comprobar la contrasena. Solo `client` puede cambiar conforme a la spec `signed-auth-token` y a sus decisiones pendientes.
+El servicio SHALL conservar `POST /auth/login` sin autenticacion previa y con solicitud y respuesta JSON. `username` y `password` SHALL rechazarse si faltan, son nulos o quedan vacios tras `trim()`, pero sus valores originales SHALL usarse para buscar al usuario y comprobar la contrasena. `client` SHALL cumplir la politica aprobada en `signed-auth-token`: obligatorio, string no blanco tras `trim()`, conservando el valor original aceptado.
 
 #### Scenario: Login sin Authorization
 - **WHEN** se envia un login valido, con `client` aceptado, `Content-Type: application/json` y sin `Authorization`
@@ -33,7 +33,7 @@ Un login valido SHALL conservar `200 OK`, `Content-Type: application/json`, `tok
 
 ### Requirement: Errores de login preservados
 
-El servicio SHALL conservar los siguientes estados y cuerpos del baseline. Para caracterizar errores de credenciales se utilizara un `client` aceptado; no se define aqui la precedencia entre nuevas validaciones de `client` y errores existentes. Cambiar mensajes `401` o detalles de `500` no forma parte del Issue #12.
+El servicio SHALL conservar los estados y cuerpos de error del baseline. Cambiar mensajes `401`, detalles `500` o errores de protocolo no forma parte del Issue #12. Para caracterizar errores de credenciales se utilizara un `client` aceptado.
 
 #### Scenario: Cuerpo JSON null
 - **WHEN** el cuerpo JSON es `null`
@@ -50,6 +50,15 @@ El servicio SHALL conservar los siguientes estados y cuerpos del baseline. Para 
 #### Scenario: Credenciales invalidas
 - **WHEN** con `client` aceptado, el usuario `student` no se autentica por usuario inexistente o contrasena incorrecta
 - **THEN** la respuesta es `401` con `{"message":"Invalid user student or password"}` y no se devuelve token
+
+### Requirement: Error de client en login
+
+El servicio SHALL validar `client` despues de username/password y antes de consultar credenciales, segun la excepcion aprobada al contrato de entrada.
+
+#### Scenario: Client ausente o blanco
+- **WHEN** `client` falta, es null, vacio o contiene solo espacios despues de validar username y password
+- **THEN** la respuesta es `400` con `{"message":"Client is required"}`
+- **AND** no se consultan credenciales ni se devuelve token
 
 #### Scenario: Error de consulta de autenticacion
 - **WHEN** una consulta SQLite falla y el flujo actual no obtiene un usuario autenticado

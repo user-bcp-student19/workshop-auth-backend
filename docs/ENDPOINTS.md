@@ -24,7 +24,7 @@ Enviar `Content-Type: application/json`; se recomienda
 |---|---|---|---|
 | `username` | string | sí | Nombre de usuario. Se rechaza si es nulo o queda vacío después de `trim()`. El valor sin recortar se usa para buscar al usuario. |
 | `password` | string | sí | Contraseña. Se rechaza si es nula o queda vacía después de `trim()`; el valor original se compara con el hash almacenado. |
-| `client` | string | no | Metadato aceptado por el DTO, pero no se utiliza para autenticar ni se devuelve. |
+| `client` | string | sí | Identifica al cliente que solicita el login. Se rechaza si falta, es null o queda vacío después de `trim()`. Se conserva el valor original aceptado en el claim del token; no se devuelve como campo de primer nivel. |
 
 Ejemplo completo con el usuario semilla local documentado en `README.md`:
 
@@ -42,7 +42,7 @@ Ejemplo completo con el usuario semilla local documentado en `README.md`:
 
 | campo | tipo | descripcion |
 |---|---|---|
-| `token` | string | JWT compacto firmado con HS256. Incluye los claims `sub`, `role`, `iat` y `exp`. |
+| `token` | string | JWT compacto firmado con HS256. Incluye los claims `sub`, `client`, `role`, `iat` y `exp`. |
 | `expiresIn` | integer | Duración del token en segundos; actualmente `3600`. |
 | `user` | object | Datos del usuario autenticado. |
 | `user.username` | string | Nombre de usuario. |
@@ -66,7 +66,8 @@ Ejemplo completo capturado en una ejecución local:
 ```
 
 El token del ejemplo fue firmado con una clave temporal local y expira; es
-ilustrativo y no debe reutilizarse como credencial.
+El valor completo del token se omite del ejemplo; no copiar tokens de logs o
+respuestas como credenciales.
 
 ### 5. Respuestas de error
 
@@ -93,6 +94,18 @@ Ocurre si `password` es nula, falta o contiene solo espacios.
 ```json
 {"message":"Password is required"}
 ```
+
+**`400 Bad Request` — cliente ausente o vacío**
+
+Ocurre después de validar username y password si `client` falta, es null o
+contiene solo espacios. No se consulta la base ni se emite token.
+
+```json
+{"message":"Client is required"}
+```
+
+Si `client` tiene un tipo JSON que no puede deserializarse como string, se
+conserva el error del framework de deserialización.
 
 **`400 Bad Request` — JSON mal formado**
 
@@ -142,7 +155,11 @@ de la excepción:
 }
 ```
 
-El mensaje concreto depende de la excepción que ocurra.
+Para `AUTH_TOKEN_SECRET` menor de 32 bytes, se devuelve
+`IllegalStateException` con el mensaje documentado. Si la variable no está
+configurada, la emisión falla con un mensaje fijo que no incluye la clave.
+Otros errores del recurso conservan el mensaje y clase actuales; el detalle de
+excepciones no forma parte del cambio de claims.
 
 ### 6. Notas de seguridad
 
@@ -150,18 +167,19 @@ El mensaje concreto depende de la excepción que ocurra.
 - El JWT está firmado, no cifrado: sus claims son legibles. Tiene `exp` y la
   duración devuelta es de una hora.
 - El secreto de firma se lee de `AUTH_TOKEN_SECRET` en los perfiles dev/prod y
-  debe tener al menos 32 bytes. No incluir secretos reales en solicitudes,
-  ejemplos ni control de versiones.
-- CORS permite solo los orígenes configurados (`AUTH_CORS_ORIGINS` en dev/prod;
-  `http://localhost:4200` en test). Un cliente navegador fuera de esa lista no
-  completa el preflight.
+- El secreto de firma se lee de `AUTH_TOKEN_SECRET` y debe tener al menos 32
+  bytes UTF-8. No hay fallback de secreto en producción. No incluir secretos
+  reales en solicitudes, ejemplos ni control de versiones.
+- El baseline describe CORS por orígenes configurados, pero
+  `application.properties` actualmente permite cualquier origen (`/.*/`).
+  Esta discrepancia queda pendiente fuera del alcance de HU-01; no se declara
+  corregida por este cambio.
 - El mensaje `401` incluye el nombre de usuario recibido y el `500` devuelve
   detalles internos; ambos son comportamientos actuales del código.
 - Los campos, estados y cuerpos descritos se verifican en
-  `src/main/java/com/bcp/workshop/auth/AuthResource.java:15-58`, el DTO en
-  `src/main/java/com/bcp/workshop/auth/LoginRequest.java:3-6`, el token en
-  `src/main/java/com/bcp/workshop/auth/LegacyTokenUtil.java:16-66` y la
-  configuración en `src/main/resources/application.properties:4-13`.
+- Los campos y estados se verifican en `AuthResource.java`, la orquestación en
+  `AuthenticationService.java`, la emisión en `SignedTokenIssuer.java` y la
+  configuración de tests/compilación en `pom.xml`.
 
 ## `GET /q/health`
 

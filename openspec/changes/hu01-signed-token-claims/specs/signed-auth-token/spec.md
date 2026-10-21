@@ -19,26 +19,43 @@ El servicio SHALL emitir, para un login valido con `client` aceptado, un token f
 - **WHEN** el mismo usuario inicia sesion con dos valores distintos de `client` que cumplen la politica acordada
 - **THEN** cada token contiene el valor aceptado de su respectiva solicitud y ambos conservan el mismo `sub`
 
-### Requirement: Validacion observable de client
+### Requirement: Validacion obligatoria de client
 
-El servicio SHALL validar `client` antes de emitir el token y SHALL NOT emitir tokens para valores rechazados. Esta validacion cambia la regla del Dia 1 que aceptaba el metadato sin usarlo. La obligatoriedad, normalizacion, restricciones y respuesta HTTP exacta quedan pendientes de acuerdo: estos escenarios no autorizan inventarlas ni cambiar los errores existentes de credenciales.
+El servicio SHALL requerir `client` como string no vacio despues de `trim()` y validarlo despues de username/password, antes de consultar credenciales. Esta politica es la excepcion aprobada al baseline del Dia 1.
+
+#### Scenario: Cliente ausente o blanco
+- **WHEN** `client` falta, es null, vacio o contiene solo espacios
+- **THEN** la respuesta es `400` con `{"message":"Client is required"}`
+- **AND** no se consultan credenciales ni se emite token
+
+#### Scenario: Tipo JSON incompatible para client
+- **WHEN** `client` no se puede deserializar como string
+- **THEN** se conserva la respuesta de deserializacion existente del framework, sin coercion nueva
+
+### Requirement: Preservacion del valor client
+
+El valor original de `client` aceptado SHALL conservarse en el claim sin normalizacion, whitelist ni limite de longitud nuevo.
 
 #### Scenario: Cliente aceptado
-- **WHEN** un login con credenciales validas incluye `client` que satisface la politica acordada y documentada
-- **THEN** el token emitido refleja el valor de `client` aceptado por esa politica
-
-#### Scenario: Cliente rechazado
-- **WHEN** un login con credenciales validas incluye un `client` que incumple la politica acordada y documentada
-- **THEN** la solicitud se rechaza sin emitir token y la respuesta coincide con el contrato de error que se acuerde para `client`
+- **WHEN** un login con credenciales validas incluye un `client` string no blanco
+- **THEN** el token emitido contiene el valor original de `client`
 
 ### Requirement: Coherencia temporal
 
-El token SHALL cumplir `exp - iat = 3600` y la respuesta SHALL mantener `expiresIn` entero igual a 3600. Se SHALL cumplir `abs(expiresIn - (exp - now)) <= tolerancia`, en segundos. La tolerancia numerica, la referencia de `now` y el presupuesto de observacion SHALL documentarse antes de implementar o aceptar pruebas; siguen pendientes en esta propuesta.
+El token SHALL cumplir `exp - iat = 3600` y la respuesta SHALL mantener `expiresIn = 3600`. La observacion SHALL usar reloj UTC compartido, tolerancia maxima de 2 segundos y presupuesto maximo de observacion de 2 segundos. La tolerancia no extiende la validez del token.
 
 #### Scenario: Duracion y respuesta coherentes
-- **WHEN** se observa la respuesta de un login valido usando la referencia de reloj y el presupuesto de observacion documentados
+- **WHEN** se observa la respuesta de un login valido con reloj UTC compartido dentro de 2 segundos
 - **THEN** `exp - iat` es 3600 y `expiresIn` es el entero 3600
-- **AND** la diferencia absoluta entre `expiresIn` y `exp - now` no supera la tolerancia numerica documentada
+- **AND** la diferencia absoluta entre `expiresIn` y `exp - now` no supera 2 segundos
+
+#### Scenario: Observacion fuera del presupuesto
+- **WHEN** la respuesta se observa mas de 2 segundos despues de su recepcion de referencia
+- **THEN** la evidencia registra el presupuesto incumplido y no amplia la tolerancia para declarar conformidad
+
+#### Scenario: Expiracion sin gracia
+- **WHEN** se comprueba la validez temporal en o despues de `exp`
+- **THEN** el token se considera expirado, sin aplicar la tolerancia de observacion como periodo de gracia
 
 ### Requirement: Expiracion efectiva
 

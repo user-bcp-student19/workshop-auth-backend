@@ -27,7 +27,9 @@ El contrato del Dia 1 en `docs/ENDPOINTS.md` describe un token firmado con `sub`
 
 Baseline: `docs/ENDPOINTS.md`, no el comportamiento futuro inferido del Issue. Se preservan ruta, metodo, ausencia de autenticacion previa, negociacion JSON, validacion y uso original de `username` y `password`, respuestas de error y estructura publica de exito. Se mantienen `role`, el escape HTML de `user.displayName`, `debug`, la duracion actual de 3600 segundos y health/CORS.
 
-La diferencia autorizada por el Issue es que `client` deja de ser ignorado y pasa a validarse y formar parte del token. El Issue no decide si sera obligatorio ni sus restricciones exactas; esa posible ruptura para clientes que lo omiten requiere acuerdo antes del diseno. Tampoco autoriza cambiar la codificacion observable HS256 del baseline: la eleccion de herramienta no implica por si sola cambiar el contrato.
+La diferencia autorizada por el Issue es que `client` deja de ser ignorado y pasa a validarse y formar parte del token. El Issue por si solo no fija obligatoriedad ni restricciones exactas; D2 en `design.md` registra la decision aprobada para esta historia y la excepcion de compatibilidad para clientes que antes lo omitian. El formato compacto HS256 es parte del contrato aprobado; la eleccion de herramienta de construccion no cambia ese contrato.
+
+Decision reconciliada con `design.md` D2: `client` es obligatorio, string, no vacio tras `trim()`, y el valor original aceptado se conserva en el claim. La ausencia, null o valor blanco produce `400` con `{"message":"Client is required"}`; la validacion ocurre despues de username/password y antes de consultar credenciales. Esta es la excepcion de contrato aprobada para clientes que antes omitian `client`.
 
 ## Capabilities
 
@@ -52,9 +54,9 @@ Ninguna capacidad OpenSpec previa. El contrato HTTP existente se referencia expr
 ### Supuestos y decisiones pendientes
 
 - `client` identifica al consumidor, no autentica al usuario ni concede permisos; el Issue no solicita un registro de clientes.
-- Pendiente de acuerdo: obligatoriedad, tipos/formato, longitud, espacios, normalizacion y respuesta exacta para `client` invalido. No se impone una lista de clientes ni un nuevo mensaje HTTP.
-- Pendiente de acuerdo: tolerancia temporal numerica y referencia de `now`. Se propone medir en segundos al observar la respuesta, con un presupuesto de observacion documentado; no se afirma que el Issue haya fijado un valor.
-- Pendiente para una fase posterior: decision documentada HMAC frente a libreria JWT, sin diseno en esta propuesta; debe respetar el contrato o tramitar expresamente cualquier desviacion.
+- Decisiones reconciliadas con `design.md`: `client` obligatorio como string no blanco tras `trim()`, preservando el valor original; no se agrega whitelist, normalizacion ni limite de longitud. Un valor JSON de tipo incompatible conserva la respuesta de deserializacion del framework.
+- Decisiones temporales reconciliadas con `design.md` D3: `exp - iat = 3600`; `now` se observa al recibir la respuesta con reloj UTC compartido; tolerancia de observacion y presupuesto maximos de 2 segundos. Una observacion tardia incumple el presupuesto y no amplia la tolerancia; no existe gracia en `exp`.
+- Decision tecnica registrada en `design.md` D1: usar Quarkus SmallRye JWT Build alineado con el BOM, algoritmo HS256 explicito y sin extension bearer. Si la prueba de compatibilidad falla, detenerse y revisar la decision; no cambiar algoritmo o contrato silenciosamente.
 - Debe identificarse como sandbox cualquier entorno con secreto de laboratorio; no se presupone que un despliegue sea sandbox.
 - `POST /q/health` y la negociacion de health siguen siendo observaciones/preguntas del baseline, no nuevos compromisos de esta historia.
 
@@ -67,8 +69,8 @@ Ninguna capacidad OpenSpec previa. El contrato HTTP existente se referencia expr
 ### Criterios de aceptacion y evidencia
 
 1. Un login valido produce token verificable con `sub`, `client`, `iat`, `exp` y el `role` existente, sin alterar la respuesta publica restante.
-2. Se prueba `expiresIn = 3600` y su diferencia frente a `exp - now` no supera la tolerancia numerica acordada y documentada; un token en o despues de `exp` no es valido.
-3. Se conservan los estados, cuerpos y reglas de entrada del baseline salvo la validacion de `client` explicitamente acordada.
+2. Se prueba `exp - iat = 3600`, `expiresIn = 3600` y una diferencia de observacion de como maximo 2 segundos usando reloj UTC compartido y presupuesto maximo de 2 segundos; una observacion tardia se informa como presupuesto incumplido, y un token en o despues de `exp` no es valido.
+3. Se conservan los estados, cuerpos y reglas de entrada del baseline salvo la validacion aprobada de `client`: ausente, null o blanco devuelve `400` con `{"message":"Client is required"}` despues de validar username/password y antes de consultar credenciales.
 4. La configuracion documentada no permite usar un secreto por defecto fuera del sandbox; los logs revisados no contienen tokens, secretos ni valores sensibles.
 
 Validacion futura: pruebas de claims, firma, reloj y expiracion; pruebas funcionales de login valido, credenciales invalidas y regresion del contrato; comprobacion de configuracion y logs de exito/error con valores sinteticos. La evidencia incluira resultados de pruebas, tolerancia y reloj utilizados, configuracion por entorno sin secretos y logs redactados. Se documentara la decision HMAC/JWT en la fase de diseno. Esta entrega solo valida los artefactos OpenSpec y se detiene para revision humana; las preguntas anteriores bloquean cerrar la especificacion para implementar.
